@@ -10,6 +10,13 @@ def mlp(x, sizes, activation=tf.tanh, output_activation=None):
         x = tf.layers.dense(x ,units=size, activation=activation)
     return tf.layers.dense(x, units=sizes[-1], activation=output_activation)
 
+def reward_to_go(ep_rews):
+    n = len(ep_rews)
+    rtgs = np.zeros_like(ep_rews)
+    for i in reversed(range(n)):
+        rtgs[i] = rtgs[i] + (ep_rews[i+1] if i+1<n else 0)
+    return rtgs
+
 def train(env_name='CartPole-v0', hidden_sizes=[32], lr=1e-2, 
             epochs=50, batch_size=5000, render=False):
 
@@ -96,7 +103,10 @@ def train(env_name='CartPole-v0', hidden_sizes=[32], lr=1e-2,
                 batch_lens.append(ep_len)
 
                 # the weight for each logprob(a|s) is R(tau)
-                batch_weights += [ep_ret] * ep_len
+                # batch_weights += [ep_ret] * ep_len
+                ### 一个朴素的idea是：当前行为之前的reward不是这个行为的结果；
+                ### 所以去除掉：
+                batch_weights += list(reward_to_go(ep_rews))
 
                 # reset episode-specific variables
                 obs, done, ep_rews = env.reset(), False, []
